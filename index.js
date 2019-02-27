@@ -126,7 +126,7 @@ function handleConnection(conn) {
                 response = RTSP_200
                 response += "CSeq: " + headers.get("CSeq") + "\r\n";
                 response += "Server: " + SERVER_NAME + "\r\n"
-                response += "Session: q58XYTLXeGT6NtNz\r\n"
+                response += "Session: " + headers.get("Session") + "\r\n"
                 response += "Connection: close\r\n"
                 response += rtspDate();
                 break;
