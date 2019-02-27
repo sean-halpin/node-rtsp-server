@@ -1,13 +1,16 @@
+var path=require('path');
 var net = require('net');
+var shell = require('shelljs');
 var HashMap = require('hashmap');
+const s = new HashMap();
 
 var server = net.createServer();
-server.on('connection', handleConnection);
+server.on('connection', (c) => handleConnection(c,s));
 server.listen(8554, function () {
     console.log('server listening to %j', server.address());
 });
 
-function handleConnection(conn) {
+function handleConnection(conn, sessions) {
     var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
     console.log('new client connection from %s', remoteAddress);
     conn.on('data', onConnData);
@@ -29,12 +32,16 @@ function handleConnection(conn) {
             }
         }
         const RTSP_200 = "RTSP/1.0 200 OK\r\n";
+        const RTSP_501 = "RTSP/1.0 501 Not Implemented\r\n";
         const SERVER_NAME = "NodeJS RTSP server"
         var response = "NO RESPONSE SET";
         var messageType = lines[0].split(" ")[0];
         switch (messageType) {
-            case "RTSP/1.0":
-                response = "RTSP is good!\r\n";
+                case "RTSP/1.0":
+                response = RTSP_501;
+                response += "CSeq: " + headers.get("CSeq") + "\r\n";
+                response += "Server: " + SERVER_NAME + "\r\n";
+                response += rtspDate();
                 break;
             case "OPTIONS":
                 // OPTIONS rtsp://localhost:8554/live.sdp RTSP/1.0
@@ -84,12 +91,16 @@ function handleConnection(conn) {
                 // CSeq: 3
                 // User-Agent: Lavf57.83.100
                 var clientPorts = headers.get("Transport").split(";")[2].split("=")[1];
-                console.log(clientPorts);
+                var rtpPort = clientPorts.split("-")[0];
+                var rtcpPort = clientPorts.split("-")[1];
+                var sessionId = getRandomInt(1,99999).toString();
+                sessions.set(sessionId, rtpPort);
+                console.log("Session RTP Port: "+ sessions.get(sessionId));
                 response = RTSP_200;
                 response += "CSeq: " + headers.get("CSeq") + "\r\n";
                 response += "Transport: RTP/AVP;unicast;client_port=" + clientPorts + ";server_port=52728-52729;ssrc=40ABEB09;mode=\"PLAY\"\r\n"
                 response += "Server: " + SERVER_NAME + "\r\n"
-                response += "Session: q58XYTLXeGT6NtNz\r\n"
+                response += "Session: " + sessionId + "\r\n"
                 response += rtspDate();
                 break;
             case "PLAY":
@@ -103,8 +114,10 @@ function handleConnection(conn) {
                 response += "RTP-Info: url=rtsp://localhost:8554/live.sdp/stream=0;seq=1;rtptime=0\r\n"
                 response += "Range: npt=0-\r\n"
                 response += "Server: " + SERVER_NAME + "\r\n"
-                response += "Session: q58XYTLXeGT6NtNz\r\n"
+                response += "Session: " + headers.get("Session") + "\r\n"
                 response += rtspDate();
+
+                shell.exec(path.resolve(__dirname, 'rtp_serve.sh') + " " + sessions.get(headers.get("Session")) , {async:true, silent:true});
                 break;
             case "TEARDOWN":
                 // TEARDOWN rtsp://localhost:8554/live.sdp/ RTSP/1.0
@@ -119,7 +132,11 @@ function handleConnection(conn) {
                 response += rtspDate();
                 break;
             default:
-                response = "Whoops\r\n";
+                response = RTSP_501;
+                response += "CSeq: " + headers.get("CSeq") + "\r\n";
+                response += "Server: " + SERVER_NAME + "\r\n";
+                response += rtspDate();
+                break;
         }
 
         console.log(response);
@@ -131,6 +148,12 @@ function handleConnection(conn) {
     function onConnError(err) {
         console.log('Connection %s error: %s', remoteAddress, err.message);
     }
+}
+
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function rtspDate(){
