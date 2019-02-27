@@ -2,15 +2,15 @@ var path=require('path');
 var net = require('net');
 var shell = require('shelljs');
 var HashMap = require('hashmap');
-const s = new HashMap();
+const sessions = new HashMap();
 
 var server = net.createServer();
-server.on('connection', (c) => handleConnection(c,s));
+server.on('connection', handleConnection);
 server.listen(8554, function () {
     console.log('server listening to %j', server.address());
 });
 
-function handleConnection(conn, sessions) {
+function handleConnection(conn) {
     var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
     console.log('new client connection from %s', remoteAddress);
     conn.on('data', onConnData);
@@ -18,19 +18,18 @@ function handleConnection(conn, sessions) {
     conn.on('error', onConnError);
     function onConnData(req) {
         var tcpString = req.toString('utf8');
-        console.log('REQUEST: %s', remoteAddress);
-        console.log('{');
+        console.log('');
         console.log('%s', tcpString);
-        console.log('}\n');
+        console.log('');
 
         var headers = new HashMap();
         var lines = tcpString.split("\r\n");
         for (var i = 0, len = lines.length; i < len; i++) {
-            console.log("LINE:%s = %s", i, lines[i]);
             if (lines[i].includes(": ")) {
                 headers.set(lines[i].split(": ")[0], lines[i].split(": ")[1]);
             }
         }
+
         const RTSP_200 = "RTSP/1.0 200 OK\r\n";
         const RTSP_501 = "RTSP/1.0 501 Not Implemented\r\n";
         const SERVER_NAME = "NodeJS RTSP server"
@@ -117,7 +116,7 @@ function handleConnection(conn, sessions) {
                 response += "Session: " + headers.get("Session") + "\r\n"
                 response += rtspDate();
 
-                shell.exec(path.resolve(__dirname, 'rtp_serve.sh') + " " + sessions.get(headers.get("Session")) , {async:true, silent:true});
+                shell.exec(path.resolve(__dirname, 'rtp_serve.sh') + " " + sessions.get(headers.get("Session")) + " " + getRandomInt(0,25).toString() , {async:true, silent:true});
                 break;
             case "TEARDOWN":
                 // TEARDOWN rtsp://localhost:8554/live.sdp/ RTSP/1.0
