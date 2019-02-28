@@ -18,6 +18,9 @@
   },
   "homepage": "https://github.com/softdev87/node-rtsp-server#readme",
   "dependencies": {
-    "net": "^1.0.2"
+    "hashmap": "^2.3.0",
+    "net": "^1.0.2",
+    "shelljs": "^0.8.3",
+    "utf8-byte-length": "^1.0.4"
   }
 }
