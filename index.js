@@ -13,8 +13,8 @@ server.listen(8554, function () {
 });
 
 function handleConnection(conn) {
-    var remoteAddress = conn.remoteAddress + ':' + conn.remotePort;
-    console.log('new client connection from %s', remoteAddress);
+    var remoteAddress = conn.remoteAddress.replace(/^.*:/, '');
+    console.log('new client connection from %s', remoteAddress + ':' + conn.remotePort);
     conn.on('data', onConnData);
     conn.once('close', onConnClose);
     conn.on('error', onConnError);
@@ -105,9 +105,13 @@ function handleConnection(conn) {
                 response += "Session: " + headers.get("Session") + "\r\n"
                 response += rtspDate();
 
-                shell.exec(path.resolve(__dirname, 'rtp_serve.sh') + " "
+                const scriptCmd = path.resolve(__dirname, 'rtp_serve.sh') + " "
                     + sessions.get(headers.get("Session")) + " "
-                    + streamIdentifer, { async: true, silent: true });
+                    + streamIdentifer + " "
+                    + remoteAddress;
+                console.log(scriptCmd);
+                shell.exec(scriptCmd,
+                    { async: true, silent: true });
                 break;
             case "TEARDOWN":
                 // TEARDOWN rtsp://localhost:8554/live.sdp/ RTSP/1.0
