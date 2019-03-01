@@ -1,1 +1,0 @@
-gst-launch-1.0 -v videotestsrc pattern=$2 ! video/x-raw,framerate=20/1 ! videoscale ! videoconvert ! x264enc tune=zerolatency bitrate=1000 speed-preset=superfast ! rtph264pay ! udpsink host=$3 port=$1

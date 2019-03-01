@@ -105,10 +105,10 @@ function handleConnection(conn) {
                 response += "Session: " + headers.get("Session") + "\r\n"
                 response += rtspDate();
 
-                const scriptCmd = path.resolve(__dirname, 'rtp_serve.sh') + " "
-                    + sessions.get(headers.get("Session")) + " "
-                    + streamIdentifer + " "
-                    + remoteAddress;
+                const scriptCmd = "gst-launch-1.0 -v videotestsrc pattern=" + streamIdentifer + " ! " + 
+                    "video/x-raw,framerate=30/1 ! videoconvert ! " + 
+                    "x264enc tune=zerolatency ! rtph264pay ! " + 
+                    "udpsink host=" + remoteAddress + " port=" + sessions.get(headers.get("Session"))
                 console.log(scriptCmd);
                 shell.exec(scriptCmd,
                     { async: true, silent: true });
